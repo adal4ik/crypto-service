@@ -1,11 +1,13 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE TABLE IF NOT EXISTS tracked_currencies (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     symbol VARCHAR(10) UNIQUE NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS price_history (
-    currency_id INT NOT NULL,
+    currency_id UUID NOT NULL,
     price NUMERIC(20, 8) NOT NULL,
     timestamp TIMESTAMPTZ NOT NULL,
     CONSTRAINT fk_currency

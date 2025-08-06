@@ -6,10 +6,11 @@ import (
 )
 
 type Service struct {
+	CurrencyService *CurrencyService
 }
 
 func NewService(repo *repository.Repository, logger logger.Logger) *Service {
 	return &Service{
-		// SubscriptionService: NewSubscriptionService(repo.SubscriptionRepository, logger),
+		CurrencyService: NewCurrencyService(repo.CurrencyRepository, logger),
 	}
 }

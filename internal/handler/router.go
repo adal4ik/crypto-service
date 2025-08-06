@@ -8,6 +8,6 @@ import (
 
 func Router(handlers Handlers) http.Handler {
 	r := chi.NewRouter()
-
+	r.Post("/currency/add", handlers.CurrencyHandler.CreateCurrency)
 	return r
 }

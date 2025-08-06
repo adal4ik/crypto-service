@@ -30,10 +30,10 @@ func LoadConfig() *Config {
 		Postgres: PostgresConfig{
 			DBHost:      getEnv("DB_HOST", "db"),
 			DBPort:      getEnv("DB_PORT", "5432"),
-			DBName:      getEnv("DB_NAME", "subtracker"),
+			DBName:      getEnv("DB_NAME", "asd"),
 			DBUser:      getEnv("DB_USER", "postgres"),
 			DBPassword:  getEnv("DB_PASSWORD", "supersecret"),
-			PostgresDSN: getEnv("POSTGRES_DSN", "postgres://postgres:supersecret@db:5432/subtracker?sslmode=disable"),
+			PostgresDSN: getEnv("POSTGRES_DSN", "postgres://postgres:supersecret@db:5432/asd?sslmode=disable"),
 		},
 	}
 	return cfg

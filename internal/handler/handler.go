@@ -6,10 +6,11 @@ import (
 )
 
 type Handlers struct {
+	CurrencyHandler *CurrencyHandler
 }
 
 func NewHandlers(service *service.Service, logger logger.Logger) *Handlers {
 	return &Handlers{
-		// SubscriptionHandler: NewSubscriptionHandler(service.SubscriptionService, logger),
+		CurrencyHandler: NewCurrencyHandler(service.CurrencyService, logger),
 	}
 }
