@@ -3,7 +3,7 @@
 APP_NAME=subtracker
 DOCKER_COMPOSE=docker compose
 
-include .env
+-include .env
 export
 
 # ---------- [ DB CONFIGURATION ] ----------
@@ -83,3 +83,13 @@ help:
 	@echo "  migrate-goto    - Go to a specific migration version"
 	@echo "  migrate-version - Show current migration version"
 	@echo "  help            - Show this help message"
+
+
+.PHONY: mock-generate
+mock-generate: ## Generate mocks for all interfaces
+	@echo "Generating mocks..."
+	# Мок для CurrencyRepository
+	mockery --name=CurrencyRepositoryInterface --dir=internal/repository --output=internal/repository/mocks --filename=currency_repo.go
+	# VVV ДОБАВЬТЕ ЭТУ СТРОКУ VVV
+	# Мок для PriceRepository
+	mockery --name=PriceRepositoryInterface --dir=internal/repository --output=internal/repository/mocks --filename=price_repo.go

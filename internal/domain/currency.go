@@ -1,6 +1,9 @@
 package domain
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
+)
 
 type Currency struct {
 	ID     uuid.UUID
@@ -8,6 +11,6 @@ type Currency struct {
 }
 
 type Price struct {
-	Price     float64
+	Price     decimal.Decimal
 	Timestamp int64
 }

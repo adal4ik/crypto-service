@@ -11,36 +11,56 @@ import (
 	"github.com/adal4ik/crypto-service/internal/config"
 	"github.com/adal4ik/crypto-service/internal/repository"
 	"github.com/adal4ik/crypto-service/pkg/logger"
+	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
+
+var httpClient = &http.Client{Timeout: 15 * time.Second}
+
+var symbolToIDMap = map[string]string{
+	"BTC":   "bitcoin",
+	"ETH":   "ethereum",
+	"LTC":   "litecoin",
+	"XRP":   "ripple",
+	"BCH":   "bitcoin-cash",
+	"DOT":   "polkadot",
+	"LINK":  "chainlink",
+	"ADA":   "cardano",
+	"XLM":   "stellar",
+	"UNI":   "uniswap",
+	"AVAX":  "avalanche-2",
+	"SOL":   "solana",
+	"MATIC": "matic-network",
+	"TRX":   "tron",
+	"ALGO":  "algorand",
+	"ATOM":  "cosmos",
+}
 
 type PriceCollector struct {
 	currencyRepo repository.CurrencyRepositoryInterface
 	priceRepo    repository.PriceRepositoryInterface
 	logger       logger.Logger
-	cfg          config.CollectorConfig // <-- ДОБАВЬТЕ ПОЛЕ
+	cfg          config.CollectorConfig
 }
 
 func NewPriceCollector(
 	currencyRepo repository.CurrencyRepositoryInterface,
 	priceRepo repository.PriceRepositoryInterface,
 	logger logger.Logger,
-	cfg config.CollectorConfig, // <-- ДОБАВЬТЕ АРГУМЕНТ
+	cfg config.CollectorConfig,
 ) *PriceCollector {
 	return &PriceCollector{
 		currencyRepo: currencyRepo,
 		priceRepo:    priceRepo,
 		logger:       logger,
-		cfg:          cfg, // <-- СОХРАНИТЕ ЕГО
+		cfg:          cfg,
 	}
 }
 
-// Start запускает бесконечный цикл сбора цен.
 func (pc *PriceCollector) Start(ctx context.Context) {
 	l := pc.logger.With(zap.String("service", "PriceCollector"))
 	l.Info("Starting price collector...", zap.Duration("interval", pc.cfg.Interval))
 
-	// Запускаем сборщик раз в минуту. Для теста можно поставить 10 секунд.
 	ticker := time.NewTicker(pc.cfg.Interval)
 	defer ticker.Stop()
 
@@ -55,11 +75,9 @@ func (pc *PriceCollector) Start(ctx context.Context) {
 		}
 	}
 }
-
 func (pc *PriceCollector) collectPrices(ctx context.Context) {
 	l := pc.logger.With(zap.String("job", "collectPrices"))
 
-	// 1. Получаем список валют из нашей БД.
 	symbols, appErr := pc.currencyRepo.GetAll(ctx)
 	if appErr != nil {
 		l.Error("failed to get tracked currencies", zap.Error(appErr))
@@ -71,26 +89,36 @@ func (pc *PriceCollector) collectPrices(ctx context.Context) {
 	}
 	l.Info("found currencies to track", zap.Strings("symbols", symbols))
 
-	// 2. Идем во внешнее API (CoinGecko).
-	// CoinGecko использует полные имена (bitcoin, ethereum), а мы храним символы (BTC, ETH).
-	// Для простоты будем считать, что они совпадают (в реальном проекте нужен был бы маппинг).
-	// В запросе они должны быть в нижнем регистре.
-	var lowerCaseSymbols []string
+	var coingeckoIDs []string
 	for _, s := range symbols {
-		lowerCaseSymbols = append(lowerCaseSymbols, strings.ToLower(s))
+		if id, ok := symbolToIDMap[strings.ToUpper(s)]; ok {
+			coingeckoIDs = append(coingeckoIDs, id)
+		} else {
+			l.Warn("no coingecko mapping for symbol", zap.String("symbol", s))
+		}
 	}
 
-	ids := strings.Join(lowerCaseSymbols, ",")
-	url := fmt.Sprintf("%s?ids=%s&vs_currencies=usd", pc.cfg.ApiBaseURL, ids)
+	if len(coingeckoIDs) == 0 {
+		l.Info("no valid currencies to query from coingecko")
+		return
+	}
 
-	resp, err := http.Get(url)
+	idsString := strings.Join(coingeckoIDs, ",")
+	url := fmt.Sprintf("%s?ids=%s&vs_currencies=usd", pc.cfg.ApiBaseURL, idsString)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		l.Error("failed to fetch prices from coingecko", zap.Error(err))
+		l.Error("failed to create http request", zap.Error(err))
+		return
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		l.Error("failed to fetch prices from coingecko", zap.Error(err), zap.String("url", url))
 		return
 	}
 	defer resp.Body.Close()
 
-	// 3. Парсим ответ.
 	var prices map[string]map[string]float64
 	if err := json.NewDecoder(resp.Body).Decode(&prices); err != nil {
 		l.Error("failed to decode coingecko response", zap.Error(err))
@@ -98,14 +126,20 @@ func (pc *PriceCollector) collectPrices(ctx context.Context) {
 	}
 	l.Info("successfully fetched prices", zap.Any("prices", prices))
 
-	// 4. Сохраняем каждую цену в нашу БД.
 	now := time.Now()
-	for i, s := range symbols {
-		// CoinGecko возвращает ключ в нижнем регистре
-		id := lowerCaseSymbols[i]
-		if priceData, ok := prices[id]; ok {
-			if usdPrice, ok := priceData["usd"]; ok {
-				pc.priceRepo.Add(ctx, s, usdPrice, now)
+	for _, symbol := range symbols {
+		coingeckoID, ok := symbolToIDMap[strings.ToUpper(symbol)]
+		if !ok {
+			continue
+		}
+
+		if priceData, ok := prices[coingeckoID]; ok {
+			if usdPriceFloat, ok := priceData["usd"]; ok {
+				priceDecimal := decimal.NewFromFloat(usdPriceFloat)
+
+				if addErr := pc.priceRepo.Add(ctx, symbol, priceDecimal, now); addErr != nil {
+					l.Error("failed to save price to db", zap.Error(addErr), zap.String("symbol", symbol))
+				}
 			}
 		}
 	}

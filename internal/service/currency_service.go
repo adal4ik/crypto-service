@@ -29,22 +29,22 @@ func NewCurrencyService(repo repository.CurrencyRepositoryInterface, logger logg
 func (s *CurrencyService) AddCurrency(ctx context.Context, symbol string) *apperrors.AppError {
 	l := s.logger.With(zap.String("symbol", symbol), zap.String("layer", "service"))
 	l.Info("Adding currency")
-
-	cleanSymbol := strings.TrimSpace(symbol)
-	if cleanSymbol == "" {
+	normalizedSymbol := strings.ToUpper(strings.TrimSpace(symbol))
+	if normalizedSymbol == "" {
 		return apperrors.NewBadRequest("currency symbol cannot be empty", nil)
 	}
 
-	return s.repo.Add(ctx, cleanSymbol)
+	return s.repo.Add(ctx, normalizedSymbol)
 }
 
 func (s *CurrencyService) RemoveCurrency(ctx context.Context, symbol string) *apperrors.AppError {
 	l := s.logger.With(zap.String("symbol", symbol), zap.String("layer", "service"))
 	l.Info("Removing currency")
 
-	cleanSymbol := strings.TrimSpace(symbol)
-	if cleanSymbol == "" {
+	normalizedSymbol := strings.ToUpper(strings.TrimSpace(symbol))
+	if normalizedSymbol == "" {
 		return apperrors.NewBadRequest("currency symbol cannot be empty", nil)
 	}
-	return s.repo.Remove(ctx, cleanSymbol)
+
+	return s.repo.Remove(ctx, normalizedSymbol)
 }

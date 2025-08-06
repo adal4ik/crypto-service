@@ -88,5 +88,5 @@ func (h *CurrencyHandler) RemoveCurrency(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	response.New(http.StatusNoContent, "success", "Currency removed from tracking list").Send(w)
+	w.WriteHeader(http.StatusNoContent)
 }

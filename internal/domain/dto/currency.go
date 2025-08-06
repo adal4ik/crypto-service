@@ -1,5 +1,7 @@
 package dto
 
+import "github.com/shopspring/decimal"
+
 // AddCurrencyRequest - DTO для запроса на добавление валюты.
 // POST /currency/add
 type AddCurrencyRequest struct {
@@ -22,9 +24,9 @@ type GetPriceRequest struct {
 
 // PriceResponse - DTO для ответа с ценой.
 type PriceResponse struct {
-	Symbol    string  `json:"symbol"`
-	Price     float64 `json:"price"`
-	Timestamp int64   `json:"timestamp"`
+	Symbol    string          `json:"symbol"`
+	Price     decimal.Decimal `json:"price"`
+	Timestamp int64           `json:"timestamp"`
 }
 
 // GenericResponse - универсальный ответ для простых операций.

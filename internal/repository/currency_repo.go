@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"strings"
 
 	"github.com/adal4ik/crypto-service/pkg/apperrors"
 	"github.com/adal4ik/crypto-service/pkg/logger"
@@ -32,9 +31,8 @@ func (r *CurrencyRepository) Add(ctx context.Context, symbol string) *apperrors.
 	l.Info("Adding currency to DB")
 
 	query := `INSERT INTO tracked_currencies (symbol) VALUES ($1) ON CONFLICT (symbol) DO NOTHING;`
-	normalizedSymbol := strings.ToUpper(symbol)
 
-	_, err := r.db.ExecContext(ctx, query, normalizedSymbol)
+	_, err := r.db.ExecContext(ctx, query, symbol)
 	if err != nil {
 		l.Error("DB error on add", zap.Error(err))
 		return apperrors.NewInternalServerError("database error", err)
@@ -47,9 +45,8 @@ func (r *CurrencyRepository) Remove(ctx context.Context, symbol string) *apperro
 	l.Info("Removing currency from DB")
 
 	query := `DELETE FROM tracked_currencies WHERE symbol = $1;`
-	normalizedSymbol := strings.ToUpper(symbol)
 
-	_, err := r.db.ExecContext(ctx, query, normalizedSymbol)
+	_, err := r.db.ExecContext(ctx, query, symbol)
 	if err != nil {
 		l.Error("DB error on remove", zap.Error(err))
 		return apperrors.NewInternalServerError("database error", err)

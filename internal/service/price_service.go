@@ -7,11 +7,12 @@ import (
 	"github.com/adal4ik/crypto-service/internal/repository"
 	"github.com/adal4ik/crypto-service/pkg/apperrors"
 	"github.com/adal4ik/crypto-service/pkg/logger"
+	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
 
 type PriceServiceInterface interface {
-	GetNearestPrice(ctx context.Context, symbol string, unixTimestamp int64) (float64, time.Time, *apperrors.AppError)
+	GetNearestPrice(ctx context.Context, symbol string, unixTimestamp int64) (decimal.Decimal, time.Time, *apperrors.AppError)
 }
 
 type priceService struct {
@@ -23,7 +24,7 @@ func NewPriceService(repo repository.PriceRepositoryInterface, logger logger.Log
 	return &priceService{repo: repo, logger: logger}
 }
 
-func (s *priceService) GetNearestPrice(ctx context.Context, symbol string, unixTimestamp int64) (float64, time.Time, *apperrors.AppError) {
+func (s *priceService) GetNearestPrice(ctx context.Context, symbol string, unixTimestamp int64) (decimal.Decimal, time.Time, *apperrors.AppError) {
 	l := s.logger.With(zap.String("symbol", symbol), zap.Int64("timestamp", unixTimestamp), zap.String("layer", "price_service"))
 	l.Info("Getting nearest price")
 

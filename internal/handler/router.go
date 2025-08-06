@@ -14,7 +14,7 @@ func Router(h *Handlers) http.Handler {
 	r.Route("/currency", func(r chi.Router) {
 		r.Post("/add", h.Currency.CreateCurrency)
 		r.Post("/remove", h.Currency.RemoveCurrency)
-		r.Get("/price", h.Price.GetPrice)
+		r.Post("/price", h.Price.GetPrice)
 	})
 
 	return r
