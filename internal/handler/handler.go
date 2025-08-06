@@ -6,11 +6,15 @@ import (
 )
 
 type Handlers struct {
-	CurrencyHandler *CurrencyHandler
+	Currency *CurrencyHandler
+	Price    *PriceHandler
 }
 
-func NewHandlers(service *service.Service, logger logger.Logger) *Handlers {
+func NewHandlers(s *service.Service, logger logger.Logger) *Handlers {
+	currencyHandler := NewCurrencyHandler(s.Currency, logger)
+
 	return &Handlers{
-		CurrencyHandler: NewCurrencyHandler(service.Currency, logger),
+		Currency: currencyHandler,
+		Price:    NewPriceHandler(s.Price, logger, currencyHandler.handleError),
 	}
 }

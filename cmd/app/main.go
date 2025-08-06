@@ -48,9 +48,9 @@ func main() {
 
 	go service.PriceCollector.Start(ctx)
 
-	mux := handler.Router(*handlers)
+	mux := handler.Router(handlers)
 	httpServer := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + cfg.App.AppPort,
 		Handler: mux,
 	}
 	go func() {

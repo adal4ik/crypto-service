@@ -6,18 +6,19 @@ import (
 )
 
 // SuccessResponse - универсальный ответ для успешных операций.
+// Поле Data теперь имеет тип interface{}, что позволяет передавать любую структуру.
 type SuccessResponse struct {
-	Code    int    `json:"code"`
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
+	Code   int         `json:"code"`
+	Status string      `json:"status"`
+	Data   interface{} `json:"data,omitempty"`
 }
 
-// New - это конструктор для SuccessResponse.
-func New(code int, status, message string) *SuccessResponse {
+// New - конструктор для SuccessResponse.
+func New(code int, status string, data interface{}) *SuccessResponse {
 	return &SuccessResponse{
-		Code:    code,
-		Status:  status,
-		Message: message,
+		Code:   code,
+		Status: status,
+		Data:   data,
 	}
 }
 
@@ -25,8 +26,6 @@ func New(code int, status, message string) *SuccessResponse {
 func (r *SuccessResponse) Send(w http.ResponseWriter) {
 	j, err := json.MarshalIndent(r, "", "\t")
 	if err != nil {
-		// Если даже ответ не можем собрать, это внутренняя ошибка сервера.
-		// Используем наш же обработчик ошибок для консистентности.
 		APIError{
 			Code:    http.StatusInternalServerError,
 			Message: "failed to marshal success response",

@@ -10,9 +10,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// PriceRepositoryInterface - интерфейс для работы с хранилищем цен.
 type PriceRepositoryInterface interface {
 	Add(ctx context.Context, symbol string, price float64, timestamp time.Time) *apperrors.AppError
+	GetNearest(ctx context.Context, symbol string, timestamp time.Time) (float64, time.Time, *apperrors.AppError)
 }
 
 type priceRepo struct {
@@ -24,19 +24,16 @@ func NewPriceRepository(db *sql.DB, logger logger.Logger) PriceRepositoryInterfa
 	return &priceRepo{db: db, logger: logger}
 }
 
-// Add сохраняет цену в базу данных.
-// Он должен сначала найти ID валюты по ее символу.
 func (r *priceRepo) Add(ctx context.Context, symbol string, price float64, timestamp time.Time) *apperrors.AppError {
 	l := r.logger.With(zap.String("symbol", symbol), zap.String("layer", "price_repo"))
 	l.Info("Adding price to DB")
 
-	// Находим ID валюты, чтобы связать с ней цену.
 	var currencyID string
 	err := r.db.QueryRowContext(ctx, "SELECT id FROM tracked_currencies WHERE symbol = $1", symbol).Scan(&currencyID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			l.Warn("currency not found, skipping price add")
-			return nil // Не ошибка, просто валюту уже удалили.
+			return nil
 		}
 		l.Error("failed to get currency id", zap.Error(err))
 		return apperrors.NewInternalServerError("database error", err)
@@ -50,4 +47,32 @@ func (r *priceRepo) Add(ctx context.Context, symbol string, price float64, times
 	}
 
 	return nil
+}
+
+func (r *priceRepo) GetNearest(ctx context.Context, symbol string, timestamp time.Time) (float64, time.Time, *apperrors.AppError) {
+	l := r.logger.With(zap.String("symbol", symbol), zap.Time("timestamp", timestamp), zap.String("layer", "price_repo"))
+	l.Info("Getting nearest price from DB")
+
+	query := `
+		SELECT p.price, p.timestamp
+		FROM price_history p
+		JOIN tracked_currencies c ON p.currency_id = c.id
+		WHERE c.symbol = $1
+		ORDER BY abs(extract(epoch from p.timestamp) - extract(epoch from $2::timestamptz))
+		LIMIT 1;
+	`
+	var price float64
+	var foundTimestamp time.Time
+
+	err := r.db.QueryRowContext(ctx, query, symbol, timestamp).Scan(&price, &foundTimestamp)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			l.Warn("no price history found for symbol")
+			return 0, time.Time{}, apperrors.NewNotFound("no price history found for this currency", err)
+		}
+		l.Error("DB error on get nearest price", zap.Error(err))
+		return 0, time.Time{}, apperrors.NewInternalServerError("database error", err)
+	}
+
+	return price, foundTimestamp, nil
 }

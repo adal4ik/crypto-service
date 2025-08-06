@@ -6,21 +6,16 @@ import (
 	"github.com/adal4ik/crypto-service/pkg/logger"
 )
 
-// Service - это контейнер для всех наших сервисов.
 type Service struct {
-	Currency       CurrencyServiceInterface // Используем интерфейс для гибкости
+	Currency       CurrencyServiceInterface
 	PriceCollector *PriceCollector
+	Price          PriceServiceInterface
 }
 
-// NewService - главный конструктор для слоя сервисов.
 func NewService(repo *repository.Repository, logger logger.Logger, cfg *config.Config) *Service {
 	return &Service{
-		// Создаем сервис для валют.
-		// Передаем ему только репозиторий, т.к. логгер ему не нужен.
-		Currency: NewCurrencyService(repo.CurrencyRepository, logger),
-
-		// Создаем сервис-сборщик цен.
-		// Ему нужны оба репозитория, логгер и его часть конфига.
+		Currency:       NewCurrencyService(repo.CurrencyRepository, logger),
 		PriceCollector: NewPriceCollector(repo.CurrencyRepository, repo.Price, logger, cfg.Collector),
+		Price:          NewPriceService(repo.Price, logger),
 	}
 }
