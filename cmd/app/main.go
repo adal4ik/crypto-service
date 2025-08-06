@@ -42,9 +42,12 @@ func main() {
 	defer db.Close()
 	logger.Info("Connected to the database successfully", zap.String("dsn", cfg.Postgres.PostgresDSN))
 	repo := repository.NewRepository(db, logger)
-	service := service.NewService(repo, logger)
+	service := service.NewService(repo, logger, cfg)
 	handlers := handler.NewHandlers(service, logger)
 	logger.Info("All components initialized successfully")
+
+	go service.PriceCollector.Start(ctx)
+
 	mux := handler.Router(*handlers)
 	httpServer := &http.Server{
 		Addr:    ":8080",

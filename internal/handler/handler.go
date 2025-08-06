@@ -11,6 +11,6 @@ type Handlers struct {
 
 func NewHandlers(service *service.Service, logger logger.Logger) *Handlers {
 	return &Handlers{
-		CurrencyHandler: NewCurrencyHandler(service.CurrencyService, logger),
+		CurrencyHandler: NewCurrencyHandler(service.Currency, logger),
 	}
 }

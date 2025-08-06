@@ -13,6 +13,7 @@ import (
 type CurrencyRepositoryInterface interface {
 	Add(ctx context.Context, symbol string) *apperrors.AppError
 	Remove(ctx context.Context, symbol string) *apperrors.AppError
+	GetAll(ctx context.Context) ([]string, *apperrors.AppError)
 }
 
 type CurrencyRepository struct {
@@ -54,4 +55,29 @@ func (r *CurrencyRepository) Remove(ctx context.Context, symbol string) *apperro
 		return apperrors.NewInternalServerError("database error", err)
 	}
 	return nil
+}
+
+func (r *CurrencyRepository) GetAll(ctx context.Context) ([]string, *apperrors.AppError) {
+	l := r.logger.With(zap.String("layer", "repo"))
+	l.Info("Getting all tracked currencies from DB")
+
+	query := `SELECT symbol FROM tracked_currencies;`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		l.Error("DB error on get all", zap.Error(err))
+		return nil, apperrors.NewInternalServerError("database error", err)
+	}
+	defer rows.Close()
+
+	var symbols []string
+	for rows.Next() {
+		var symbol string
+		if err := rows.Scan(&symbol); err != nil {
+			l.Error("DB error on scan symbol", zap.Error(err))
+			return nil, apperrors.NewInternalServerError("database error", err)
+		}
+		symbols = append(symbols, symbol)
+	}
+
+	return symbols, nil
 }

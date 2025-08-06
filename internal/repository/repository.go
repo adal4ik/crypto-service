@@ -8,10 +8,12 @@ import (
 
 type Repository struct {
 	CurrencyRepository CurrencyRepositoryInterface
+	Price              PriceRepositoryInterface
 }
 
 func NewRepository(db *sql.DB, logger logger.Logger) *Repository {
 	return &Repository{
 		CurrencyRepository: NewCurrencyRepository(db, logger),
+		Price:              NewPriceRepository(db, logger),
 	}
 }
