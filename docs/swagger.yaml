@@ -1,0 +1,170 @@
+basePath: /
+definitions:
+  github_com_adal4ik_crypto-service_internal_domain_dto.AddCurrencyRequest:
+    properties:
+      symbol:
+        type: string
+    type: object
+  github_com_adal4ik_crypto-service_internal_domain_dto.GenericResponse:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_adal4ik_crypto-service_internal_domain_dto.GetPriceRequest:
+    properties:
+      coin:
+        type: string
+      timestamp:
+        type: integer
+    type: object
+  github_com_adal4ik_crypto-service_internal_domain_dto.PriceResponse:
+    properties:
+      price:
+        type: number
+      symbol:
+        type: string
+      timestamp:
+        type: integer
+    type: object
+  github_com_adal4ik_crypto-service_internal_domain_dto.RemoveCurrencyRequest:
+    properties:
+      symbol:
+        type: string
+    type: object
+  github_com_adal4ik_crypto-service_pkg_response.APIError:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+      resource:
+        type: string
+    type: object
+  github_com_adal4ik_crypto-service_pkg_response.SuccessResponse:
+    properties:
+      code:
+        type: integer
+      data: {}
+      status:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: Adlet
+    url: http://www.swagger.io/support
+  description: A simple microservice to track cryptocurrency prices.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Crypto Price Service API
+  version: "1.0"
+paths:
+  /currency/add:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new cryptocurrency symbol to the tracking list.
+      parameters:
+      - description: Symbol to add
+        in: body
+        name: symbol
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_adal4ik_crypto-service_internal_domain_dto.AddCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successfully added
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_adal4ik_crypto-service_pkg_response.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_adal4ik_crypto-service_internal_domain_dto.GenericResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_adal4ik_crypto-service_pkg_response.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_adal4ik_crypto-service_pkg_response.APIError'
+      summary: Add a cryptocurrency
+      tags:
+      - currency
+  /currency/price:
+    post:
+      consumes:
+      - application/json
+      description: Get the price of a cryptocurrency at the nearest available time
+        to the requested timestamp.
+      parameters:
+      - description: Coin and Timestamp
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_adal4ik_crypto-service_internal_domain_dto.GetPriceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_adal4ik_crypto-service_pkg_response.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_adal4ik_crypto-service_internal_domain_dto.PriceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_adal4ik_crypto-service_pkg_response.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_adal4ik_crypto-service_pkg_response.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_adal4ik_crypto-service_pkg_response.APIError'
+      summary: Get cryptocurrency price
+      tags:
+      - price
+  /currency/remove:
+    post:
+      consumes:
+      - application/json
+      description: Removes a cryptocurrency symbol from the tracking list.
+      parameters:
+      - description: Symbol to remove
+        in: body
+        name: symbol
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_adal4ik_crypto-service_internal_domain_dto.RemoveCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Successfully removed (No Content)
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_adal4ik_crypto-service_pkg_response.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_adal4ik_crypto-service_pkg_response.APIError'
+      summary: Remove a cryptocurrency
+      tags:
+      - currency
+swagger: "2.0"
