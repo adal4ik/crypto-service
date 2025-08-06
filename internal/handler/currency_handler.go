@@ -64,31 +64,29 @@ func (h *CurrencyHandler) handleError(w http.ResponseWriter, r *http.Request, er
 func (h *CurrencyHandler) CreateCurrency(w http.ResponseWriter, r *http.Request) {
 	var req dto.AddCurrencyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.logger.Warn("failed to decode request body", zap.Error(err))
-		// Для клиента отправляем более общее сообщение
-		http.Error(w, `{"status": "error", "message": "invalid request body"}`, http.StatusBadRequest)
+		h.handleError(w, r, apperrors.NewBadRequest("invalid request body", err))
 		return
 	}
 
-	// 2. Валидируем DTO
-	if req.Symbol == "" {
-		http.Error(w, `{"status": "error", "message": "symbol is required"}`, http.StatusBadRequest)
+	if err := h.service.AddCurrency(r.Context(), req.Symbol); err != nil {
+		h.handleError(w, r, err)
 		return
 	}
 
-	// 3. Вызываем сервис с данными из DTO
-	err := h.service.AddCurrency(r.Context(), req.Symbol)
-	if err != nil {
-		h.logger.Error("failed to add currency", zap.Error(err), zap.String("symbol", req.Symbol))
-		http.Error(w, `{"status": "error", "message": "could not add currency"}`, http.StatusInternalServerError)
+	response.New(http.StatusCreated, "success", "Currency added to tracking list").Send(w)
+}
+
+func (h *CurrencyHandler) RemoveCurrency(w http.ResponseWriter, r *http.Request) {
+	var req dto.RemoveCurrencyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.handleError(w, r, apperrors.NewBadRequest("invalid request body", err))
 		return
 	}
 
-	// 4. Формируем и отправляем успешный ответ с помощью DTO
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated) // 201 Created - правильный статус для успешного создания ресурса
-	json.NewEncoder(w).Encode(dto.GenericResponse{
-		Status:  "success",
-		Message: "Currency added to tracking list",
-	})
+	if err := h.service.RemoveCurrency(r.Context(), req.Symbol); err != nil {
+		h.handleError(w, r, err)
+		return
+	}
+
+	response.New(http.StatusNoContent, "success", "Currency removed from tracking list").Send(w)
 }

@@ -15,6 +15,7 @@ type Logger interface {
 	Error(msg string, fields ...zap.Field)
 	Fatal(msg string, fields ...zap.Field)
 	Warn(msg string, fields ...zap.Field)
+	With(fields ...zap.Field) Logger
 	Sync() error
 }
 
@@ -62,6 +63,10 @@ func (l *zapLogger) Fatal(msg string, fields ...zap.Field) {
 
 func (l *zapLogger) Warn(msg string, fields ...zap.Field) {
 	l.logger.Warn(msg, fields...)
+}
+
+func (l *zapLogger) With(fields ...zap.Field) Logger {
+	return &zapLogger{logger: l.logger.With(fields...)}
 }
 
 func (l *zapLogger) Sync() error {
