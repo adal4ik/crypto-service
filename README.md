@@ -1,102 +1,172 @@
-# crypto-service'
+# 🪙 Crypto Service
 
+A microservice written in Go that collects, stores, and serves cryptocurrency price data in real-time.  
+The service tracks selected cryptocurrencies, periodically fetches their USD prices from the [CoinGecko API](https://www.coingecko.com/en/api), and stores the data in PostgreSQL.
 
-План действий по доработке проекта
+---
 
-Вы уже реализовали всю основную логику. Теперь мы будем ее "шлифовать" и делать production-ready.
-1. Конфигурация и окружение (быстрые и важные исправления)
+## 📦 API Endpoints
 
-    [ ] Задача 1.1: Унифицировать переменные портов.
+### `POST /currency/add`
 
-        Действие: В config/config.go изменить ожидание APP_PORT на HTTP_PORT. Или наоборот, в .env.example и docker-compose.yml заменить HTTP_PORT на APP_PORT. Давайте выберем APP_PORT как единый стандарт.
+Adds a cryptocurrency to the tracking list.
 
-    [ ] Задача 1.2: Дополнить .env.example.
+**Request body:**
+```json
+{
+  "symbol": "BTC"
+}
+```
 
-        Действие: Добавить в .env.example строки COLLECTOR_INTERVAL_SECONDS=60 и COINGECKO_API_URL=....
+**Response:**
+```json
+{
+  "code": 201,
+  "status": "success",
+  "data": "Currency added to tracking list"
+}
+```
 
-    [ ] Задача 1.3 (Опционально, но хорошо): Сделать Makefile более надежным.
+---
 
-        Действие: Заменить include .env на -include .env. Знак - говорит make не падать, если файл отсутствует.
+### `POST /currency/remove`
 
-    [ ] Задача 1.4: Убрать хардкод порта из Dockerfile.
+Removes a cryptocurrency from the tracking list.
 
-        Действие: В Dockerfile можно либо убрать строку EXPOSE 8080 совсем (так как ports в docker-compose.yml главнее), либо сделать ее динамической: ARG APP_PORT=8080, ENV APP_PORT=$APP_PORT, EXPOSE $APP_PORT.
+**Request body:**
+```json
+{
+  "symbol": "BTC"
+}
+```
 
-2. Работа с БД (критически важные улучшения)
+**Response:**
+```json
+{
+  "code": 200,
+  "status": "success",
+  "data": "Currency removed from tracking list"
+}
+```
 
-    [ ] Задача 2.1: Использовать тип decimal для денег.
+---
 
-        Действие: Установить библиотеку shopspring/decimal (go get github.com/shopspring/decimal). Везде, где используется price (DTO, модели DAO, таблицы БД), заменить float64 на decimal.Decimal и NUMERIC(20, 8). Это самое важное исправление.
+### `GET /currency/price?coin=BTC&timestamp=1736500490`
 
-    [ ] Задача 2.2: Нормализовать symbol в одном месте.
+Returns the price of the specified coin at the given UNIX timestamp.  
+If no exact match is found, the closest available price is returned.
 
-        Действие: В CurrencyService перед вызовом репозитория всегда делать cleanSymbol = strings.ToUpper(strings.TrimSpace(symbol)). В репозитории эту логику убрать.
+**Response:**
+```json
+{
+  "code": 200,
+  "status": "success",
+  "data": {
+    "symbol": "BTC",
+    "price": 29943.12,
+    "timestamp": 1736500485
+  }
+}
+```
 
-    [ ] Задача 2.3: Исправить логику ConnectDB.
+---
 
-        Действие: В ConnectDB добавить условие: if cfg.PostgresDSN != "" { connStr = cfg.PostgresDSN } else { ...собираем по частям... }.
+## ⚙️ Environment Configuration
 
-3. Сервис цен (Price Collector) — Повышение надежности
+Create a `.env` file in the project root based on `.env.example`:
 
-    [ ] Задача 3.1 (Самое важное): Добавить таймауты и контекст в HTTP-клиент.
+```env
+# PostgreSQL
+DB_USER=postgres
+DB_PASSWORD=supersecret
+DB_HOST=localhost
+DB_NAME=crypto
+DB_PORT=5432
 
-        Действие: В PriceCollector создать кастомный http.Client с таймаутами.
-        code Go
+# App
+APP_PORT=8080
 
-        IGNORE_WHEN_COPYING_START
-        IGNORE_WHEN_COPYING_END
+# Price Collector
+COLLECTOR_INTERVAL_SECONDS=60
+COINGECKO_API_URL=https://api.coingecko.com/api/v3/simple/price
+```
 
-              
-        pc.httpClient = &http.Client{
-            Timeout: 30 * time.Second, // Общий таймаут
-        }
+---
 
-            
+## 🚀 Getting Started
 
-        При запросе использовать http.NewRequestWithContext(ctx, "GET", url, nil) и pc.httpClient.Do(req). Это автоматически прервет запрос, если ctx будет отменен.
+### 1. Clone the repository
 
-    [ ] Задача 3.2: Проверять ошибки при сохранении цены.
+```bash
+git clone https://github.com/adal4ik/crypto-service.git
+cd crypto-service
+```
 
-        Действие: В цикле сохранения цен в price_collector.go проверять appErr от pc.priceRepo.Add и логировать его: if appErr != nil { l.Error(...) }.
+### 2. Create `.env` file
 
-    [ ] Задача 3.3 (Бонусный балл): Реализовать маппинг символов.
+```bash
+cp .env.example .env
+# Then edit .env as needed
+```
 
-        Действие: Создать в сервисе map[string]string ("BTC": "bitcoin", "ETH": "ethereum") и использовать его для формирования запроса к CoinGecko.
+### 3. Run the service with Docker
 
-4. HTTP-ручки и DTO
+```bash
+make up
+```
 
-    [ ] Задача 4.1: Привести /currency/price в соответствие с ТЗ.
+This will:
 
-        Действие: Изменить r.Get("/price", ...) на r.Post("/price", ...). В хендлере GetPrice изменить логику парсинга с r.URL.Query() на json.NewDecoder(r.Body).Decode(&req).
+- Build the Go application
+- Start the app and PostgreSQL
+- Run database migrations
+- Start the price collector
 
-    [ ] Задача 4.2: Исправить код ответа 204.
+The service will be available at:  
+**`http://localhost:${APP_PORT}`**
 
-        Действие: В CurrencyHandler.RemoveCurrency изменить w.WriteHeader(http.StatusOK) (200) на w.WriteHeader(http.StatusNoContent) (204) и полностью убрать строку json.NewEncoder(...).Encode(...).
+---
 
-    [ ] Задача 4.3 (Опционально): Заменить chi/middleware.Logger.
+## 🗄 Database Migrations
 
-        Действие: Написать свою middleware, которая использует ваш zap-логгер. Это покажет глубокое понимание.
+Migrations are located in the `./migrations` folder.
 
-5. Документация и Тесты (Обязательно для Middle)
+You can run them manually with:
 
-    [ ] Задача 5.1: Написать README.md.
+```bash
+make migrate-up
+```
 
-        Действие: Пройтись по плану из предыдущего ответа и заполнить все разделы.
+To revert the last migration:
 
-    [ ] Задача 5.2: Добавить Swagger.
+```bash
+make migrate-down
+```
 
-        Действие: Пройтись по плану из предыдущего ответа: установить swag, аннотировать хендлеры, сгенерировать docs, добавить роут.
+> Requires [golang-migrate](https://github.com/golang-migrate/migrate) installed locally.
 
-    [ ] Задача 5.3: Написать тесты.
+---
 
-        Действие: Восстановить юнит-тесты для service и repository, которые мы уже писали. Они были почти готовы.
+## 🧱 Project Structure
 
-Приоритеты:
+```
+.
+├── cmd/                # Entry point (main.go)
+├── internal/           # Application logic
+│   ├── config/         # Configuration loading
+│   ├── domain/         # Domain models and DTOs
+│   ├── handler/        # HTTP handlers and routes
+│   ├── repository/     # Database interaction
+│   └── service/        # Business logic
+├── migrations/         # SQL migration files
+├── pkg/                # Shared helpers (logger, errors, response)
+├── Dockerfile
+├── docker-compose.yml
+└── Makefile
+```
 
-    Критичные исправления: Таймауты (3.1), тип decimal для денег (2.1), соответствие ТЗ (4.1), исправление кода 204 (4.2).
+---
 
-    Обязательно для Middle: README.md (5.1) и Тесты (5.3).
+## 🧑‍💻 Author
 
-    Сильно рекомендуется: Swagger (5.2), унификация конфигов (1.1, 1.2).
-
-    Хорошие улучшения: Все остальное.
+GitHub: [adal4ik](https://github.com/adal4ik)

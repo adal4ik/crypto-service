@@ -28,6 +28,18 @@ func NewPriceHandler(
 		handleError: errorHandler,
 	}
 }
+
+// @Summary      Get cryptocurrency price
+// @Description  Get the price of a cryptocurrency at the nearest available time to the requested timestamp.
+// @Tags         price
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.GetPriceRequest true "Coin and Timestamp"
+// @Success      200  {object}  response.SuccessResponse{data=dto.PriceResponse} "Successful response"
+// @Failure      400  {object}  response.APIError "Bad Request"
+// @Failure      404  {object}  response.APIError "Not Found"
+// @Failure      500  {object}  response.APIError "Internal Server Error"
+// @Router       /currency/price [post]
 func (h *PriceHandler) GetPrice(w http.ResponseWriter, r *http.Request) {
 	var req dto.GetPriceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
