@@ -43,9 +43,7 @@ Removes a cryptocurrency from the tracking list.
 **Response:**
 ```json
 {
-  "code": 200,
-  "status": "success",
-  "data": "Currency removed from tracking list"
+  "code": 204
 }
 ```
 
